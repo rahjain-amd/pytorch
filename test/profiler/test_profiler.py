@@ -553,12 +553,16 @@ class TestProfiler(TestCase):
         found_gemm_1 = False
         found_cuda = False
         for evt in prof.events():
-            if "gemm" in evt.name.lower() and evt.device_type == DeviceType.CUDA:
+            is_rocm = getattr(torch.version, 'hip', None) is not None
+            # on ROCm, Gemm shader is hipblaslt Shader, so we use UserArgs_MT to match.
+            gemm_string = "UserArgs_MT" if is_rocm else "gemm"
+            if gemm_string in evt.name and evt.device_type == DeviceType.CUDA:
                 if evt.device_index == 0:
                     found_gemm_0 = True
                 elif evt.device_index == 1:
                     found_gemm_1 = True
-            if "cuda" in evt.name.lower() and evt.device_type == DeviceType.CPU:
+            device_string = "hip" if is_rocm else "cuda"
+            if device_string in evt.name.lower() and evt.device_type == DeviceType.CPU:
                 found_cuda = True
 
         self.assertTrue(found_gemm_0)
